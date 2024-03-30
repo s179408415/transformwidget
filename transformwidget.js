@@ -51,9 +51,18 @@ if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
 gl.useProgram(program);
 
 let vsSource1=`#version 300 es
+layout (location=0) in vec3 aPos;
+uniform mat4 viewMat;
+uniform mat4 projMat;
+uniform mat4 worldMat;
 void main() {
-    gl_Position.xy = (vec2(gl_VertexID% 2, gl_VertexID/2)*2.-vec2(1.));
-    gl_Position.zw = vec2(-1,1);
+    //gl_Position.xy = (vec2(gl_VertexID% 2, gl_VertexID/2)*2.-vec2(1.));
+    gl_Position = projMat * viewMat* worldMat *vec4(aPos,1.);
+    gl_Position.z += 0.00001 * gl_Position.w;
+    // vec4 wPos4=worldMat *vec4(aPos,1.);
+    // wPos = wPos4.xyz/wPos4.w;
+
+    //gl_Position.zw = vec2(-1,1);
 }
 `;
 let fsSource1=`#version 300 es
@@ -63,7 +72,7 @@ void main() {
     vec2 uv=gl_FragCoord.xy*0.5;
     
     vec2 patternxy = smoothstep(0.45,0.55,fract(uv));
-     float pattern = patternxy.x*patternxy.y;
+    float pattern = patternxy.x*patternxy.y*0.5+0.5;
     fragColor=vec4(0,0,0,1.0)*pattern;
 }
 `;
@@ -238,7 +247,7 @@ setInterval(()=>{
     gl.uniform1i( gl.getUniformLocation(program, "useLighting"), 1);
     gl.colorMask(true,true,true,true);
     gl.stencilFunc(gl.EQUAL, 0, 0xff);
-    gl.stencilOp(gl.INCR,gl.KEEP,gl.KEEP);
+    gl.stencilOp(gl.KEEP,gl.KEEP,gl.KEEP);
     gl.bindVertexArray(vao);
     gl.uniformMatrix4fv( gl.getUniformLocation(program, "worldMat"), false,m.mul(widgetPosTrans).arr());
     gl.uniform4fv(gl.getUniformLocation(program, "uColor"),[1,1,1,1]);
@@ -247,10 +256,16 @@ setInterval(()=>{
     // gl.disable(gl.STENCIL_TEST);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    gl.stencilFunc(gl.LESS,1, 0xff);
-    gl.stencilOp(gl.KEEP,gl.KEEP,gl.KEEP);
+    gl.disable(gl.STENCIL_TEST);
     gl.useProgram(quadProgram);
-    gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+    gl.bindVertexArray(vao);
+    gl.uniformMatrix4fv( gl.getUniformLocation(quadProgram, "viewMat"), false, viewMat);
+    gl.uniformMatrix4fv( gl.getUniformLocation(quadProgram, "projMat"), false, projMat);
+    gl.uniformMatrix4fv( gl.getUniformLocation(quadProgram, "worldMat"), false,m.mul(widgetPosTrans).arr());
+    gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+    // gl.stencilFunc(gl.LESS,1, 0xff);
+    // gl.stencilOp(gl.KEEP,gl.KEEP,gl.KEEP);
+    // gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
     gl.disable(gl.BLEND);
 }, 0.1);
     var EPickAxis = {
